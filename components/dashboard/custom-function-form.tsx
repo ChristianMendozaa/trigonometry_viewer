@@ -13,6 +13,8 @@ import { Input } from "@/components/ui/input"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { useToast } from "@/hooks/use-toast"
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL;
+
 const formSchema = z.object({
   functionName: z
     .string()
@@ -31,8 +33,8 @@ const formSchema = z.object({
 })
 
 type CustomFunctionFormProps = {
-  onSave: (data: { name: string; expression: string }) => Promise<void>
-}
+  onSave: () => void; // 🔹 Ahora `onSave` es una función sin parámetros
+};
 
 export function CustomFunctionForm({ onSave }: CustomFunctionFormProps) {
   const [isValidating, setIsValidating] = useState(false)
@@ -94,37 +96,36 @@ export function CustomFunctionForm({ onSave }: CustomFunctionFormProps) {
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     if (!validationResult?.isValid) {
-      toast({
-        variant: "destructive",
-        title: "Error de validación",
-        description: "Por favor, corrija los errores en la expresión antes de guardar.",
-      })
-      return
+      toast({ variant: "destructive", title: "Error de validación", description: "Corrige la expresión antes de guardar." });
+      return;
     }
 
-    setIsSaving(true)
+    setIsSaving(true);
     try {
-      await onSave({
-        name: values.functionName,
-        expression: values.functionExpression,
-      })
+      const user = JSON.parse(localStorage.getItem("user") || "{}");
+      const token = user?.token;
+      if (!token) throw new Error("Usuario no autenticado");
 
-      toast({
-        title: "Función guardada",
-        description: `La función "${values.functionName}" ha sido guardada correctamente.`,
-      })
+      const res = await fetch(`${API_URL}/functions/save`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ name: values.functionName, expression: values.functionExpression }),
+      });
 
-      // Reset form after successful save
-      form.reset()
-      setValidationResult(null)
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.detail || "Error al guardar la función.");
+      }
+
+      toast({ title: "Función guardada", description: `La función "${values.functionName}" ha sido guardada correctamente.` });
+      
+      onSave(); // 🔹 Actualizar la lista de funciones guardadas
+      form.reset();
+      setValidationResult(null);
     } catch (error) {
-      toast({
-        variant: "destructive",
-        title: "Error al guardar",
-        description: "No se pudo guardar la función. Inténtelo de nuevo.",
-      })
+      toast({ variant: "destructive", title: "Error al guardar", description: "No se pudo guardar la función." });
     } finally {
-      setIsSaving(false)
+      setIsSaving(false);
     }
   }
 

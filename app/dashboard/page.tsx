@@ -1,86 +1,98 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { LineChart, Settings, History, Save, BookmarkIcon } from "lucide-react"
+import { useState, useEffect } from "react";
+import { LineChart, Settings, History, Save, BookmarkIcon, Loader2 } from "lucide-react";
 
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { SeriesForm } from "@/components/dashboard/series-form"
-import { SeriesChart } from "@/components/dashboard/series-chart"
-import { SeriesHistory } from "@/components/dashboard/series-history"
-import { useAuth } from "@/lib/auth-provider"
-import { CustomFunctionForm } from "@/components/dashboard/custom-function-form"
-import { SavedFunctionsList } from "@/components/dashboard/saved-functions-list"
-import { SavedResultsList } from "@/components/dashboard/saved-results-list"
-import { useCustomFunctions } from "@/lib/custom-functions"
-import { useSavedResults } from "@/lib/saved-results"
-import { useToast } from "@/hooks/use-toast"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { cn } from "@/lib/utils"
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { SeriesForm } from "@/components/dashboard/series-form";
+import { SeriesChart } from "@/components/dashboard/series-chart";
+import { SeriesHistory } from "@/components/dashboard/series-history";
+import { useAuth } from "@/lib/auth-provider";
+import { CustomFunctionForm } from "@/components/dashboard/custom-function-form";
+import { SavedFunctionsList } from "@/components/dashboard/saved-functions-list";
+import { SavedResultsList } from "@/components/dashboard/saved-results-list";
+import { useCustomFunctions } from "@/lib/custom-functions";
+import { useSavedResults } from "@/lib/saved-results";
+import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
 export default function DashboardPage() {
-  const { user } = useAuth()
-  const [activeTab, setActiveTab] = useState("generator")
-  const [seriesData, setSeriesData] = useState<any>(null)
-  const [currentSeriesType, setCurrentSeriesType] = useState<string>("sine")
-  const [currentSeriesParams, setCurrentSeriesParams] = useState<any>(null)
-  const [saveDialogOpen, setSaveDialogOpen] = useState(false)
-  const [resultName, setResultName] = useState("")
-  const [isSaving, setIsSaving] = useState(false)
+  const { user } = useAuth();
+  const [activeTab, setActiveTab] = useState("generator");
+  const [seriesData, setSeriesData] = useState<any>(null);
+  const [isSaving, setIsSaving] = useState(false);
 
-  const { userFunctions, saveFunction, deleteFunction } = useCustomFunctions()
-  const { userResults, saveResult, deleteResult } = useSavedResults()
-  const { toast } = useToast()
+  const { userFunctions, saveFunction } = useCustomFunctions();
+  const { toast } = useToast();
 
-  const [selectedCustomFunction, setSelectedCustomFunction] = useState<string | null>(null)
-  const [selectedCustomFunctionName, setSelectedCustomFunctionName] = useState<string | null>(null)
+  const [selectedCustomFunction, setSelectedCustomFunction] = useState<string | null>(null);
 
-  const handleUseCustomFunction = (func: any) => {
-    setSelectedCustomFunction(func.expression)
-    setSelectedCustomFunctionName(func.name)
-    setActiveTab("generator")
-  }
+  const [functions, setFunctions] = useState([]); // 🔹 Estado para las funciones guardadas
 
-  const handleGenerateSeries = (data: any, params: any) => {
-    setSeriesData(data)
-    setCurrentSeriesParams(params)
-    setCurrentSeriesType(params.seriesType)
-  }
-
-  const handleSaveResults = async () => {
+  // 🔹 Función para obtener funciones guardadas
+  const fetchFunctions = async () => {
     try {
-      if (!seriesData || !seriesData.id) {
-        console.error("❌ No hay datos de serie o falta el ID de la serie.");
-        return;
-      }
-
-      // Verificar el usuario autenticado
       const user = JSON.parse(localStorage.getItem("user") || "{}");
       const token = user?.token;
-      const uid = user?.id; // 🔹 Obtener el ID del usuario
+      if (!token) throw new Error("Usuario no autenticado");
+
+      const res = await fetch(`${API_URL}/functions/saved`, {
+        method: "GET",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.detail || "Error al obtener funciones");
+      }
+
+      const data = await res.json();
+      setFunctions(data);
+    } catch (error) {
+      console.error("❌ Error al obtener funciones:", error);
+      toast({
+        variant: "destructive",
+        title: "Error al cargar funciones",
+        description: "No se pudieron cargar las funciones guardadas.",
+      });
+    }
+  };
+
+  useEffect(() => {
+    fetchFunctions(); // 🔹 Cargar funciones al montar el componente
+  }, []);
+
+  const handleUseCustomFunction = (func: any) => {
+    setSelectedCustomFunction(func.expression);
+    setActiveTab("generator");
+  };
+
+  const handleSaveResults = async () => {
+    if (!seriesData || !seriesData.id) {
+      console.error("❌ No hay datos de serie o falta el ID de la serie.");
+      return;
+    }
+
+    setIsSaving(true);
+
+    try {
+      const user = JSON.parse(localStorage.getItem("user") || "{}");
+      const token = user?.token;
+      const uid = user?.id;
 
       if (!token || !uid) throw new Error("Usuario no autenticado");
 
-      // 🔹 Construcción del payload con `uid` y `seriesId`
       const payload = {
-        uid, // Enviar explícitamente el UID del usuario
-        seriesId: seriesData.id, // ID de la serie generada en Firestore
+        uid,
+        seriesId: seriesData.id,
       };
 
       console.log("🔹 Payload enviado al backend:", JSON.stringify(payload, null, 2));
 
-      // Enviar los resultados al backend
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/results/save`, {
         method: "POST",
         headers: {
@@ -97,18 +109,29 @@ export default function DashboardPage() {
       }
 
       console.log("✅ Resultados guardados correctamente en Firestore");
+
+      toast({
+        title: "Resultados guardados",
+        description: "Los resultados de la serie se guardaron exitosamente.",
+      });
     } catch (error) {
       console.error("❌ Error al guardar los resultados:", error);
+      toast({
+        variant: "destructive",
+        title: "Error al guardar",
+        description: "No se pudo guardar los resultados. Inténtelo de nuevo.",
+      });
+    } finally {
+      setIsSaving(false);
     }
   };
 
-  // Definir las pestañas con sus iconos y nombres
   const tabs = [
     { id: "generator", icon: <LineChart className="h-5 w-5" />, label: "Generador" },
     { id: "history", icon: <History className="h-5 w-5" />, label: "Historial" },
     { id: "saved", icon: <BookmarkIcon className="h-5 w-5" />, label: "Resultados" },
     { id: "custom", icon: <Settings className="h-5 w-5" />, label: "Funciones" },
-  ]
+  ];
 
   return (
     <div className="space-y-6">
@@ -117,26 +140,6 @@ export default function DashboardPage() {
         <p className="text-muted-foreground">Genera y visualiza series trigonométricas personalizadas</p>
       </div>
 
-      {/* Navegación móvil (bottom navigation) */}
-      <div className="fixed bottom-0 left-0 right-0 z-50 bg-background border-t md:hidden">
-        <div className="grid grid-cols-4 h-16">
-          {tabs.map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={cn(
-                "flex flex-col items-center justify-center space-y-1 transition-colors",
-                activeTab === tab.id ? "text-primary" : "text-muted-foreground hover:text-foreground",
-              )}
-            >
-              {tab.icon}
-              <span className="text-xs">{tab.label}</span>
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Navegación desktop */}
       <div className="hidden md:block">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="grid grid-cols-4 w-full">
@@ -150,7 +153,6 @@ export default function DashboardPage() {
         </Tabs>
       </div>
 
-      {/* Contenido de las pestañas */}
       <div className="pb-20 md:pb-0">
         {activeTab === "generator" && (
           <div className="space-y-6">
@@ -215,35 +217,19 @@ export default function DashboardPage() {
                     </div>
 
                     <div className="flex justify-end">
-                      <Dialog open={saveDialogOpen} onOpenChange={setSaveDialogOpen}>
-                        <DialogTrigger asChild>
-                          <Button>
+                      <Button onClick={handleSaveResults} disabled={isSaving}>
+                        {isSaving ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Guardando...
+                          </>
+                        ) : (
+                          <>
                             <Save className="mr-2 h-4 w-4" />
                             Guardar Resultados
-                          </Button>
-                        </DialogTrigger>
-                        <DialogContent>
-                          <DialogHeader>
-                            <DialogTitle>Guardar Resultados</DialogTitle>
-                            <DialogDescription>Asigne un nombre para identificar estos resultados</DialogDescription>
-                          </DialogHeader>
-                          <div className="py-4">
-                            <Label htmlFor="result-name">Nombre</Label>
-                            <Input
-                              id="result-name"
-                              value={resultName}
-                              onChange={(e) => setResultName(e.target.value)}
-                              placeholder="Ej: Análisis de Seno 0-2π"
-                              className="mt-2"
-                            />
-                          </div>
-                          <DialogFooter>
-                            <Button onClick={handleSaveResults} disabled={isSaving || !resultName.trim()}>
-                              {isSaving ? "Guardando..." : "Guardar"}
-                            </Button>
-                          </DialogFooter>
-                        </DialogContent>
-                      </Dialog>
+                          </>
+                        )}
+                      </Button>
                     </div>
                   </div>
                 </CardContent>
@@ -256,7 +242,6 @@ export default function DashboardPage() {
           <Card>
             <CardHeader>
               <CardTitle>Historial de Series Generadas</CardTitle>
-              <CardDescription>Visualiza y compara tus series trigonométricas anteriores</CardDescription>
             </CardHeader>
             <CardContent>
               <SeriesHistory />
@@ -268,14 +253,12 @@ export default function DashboardPage() {
           <Card>
             <CardHeader>
               <CardTitle>Resultados Guardados</CardTitle>
-              <CardDescription>Accede a tus análisis de series guardados</CardDescription>
             </CardHeader>
             <CardContent>
               <SavedResultsList />
             </CardContent>
           </Card>
         )}
-
         {activeTab === "custom" && (
           <div className="grid gap-6 lg:grid-cols-2">
             <Card>
@@ -284,7 +267,7 @@ export default function DashboardPage() {
                 <CardDescription>Define tu propia función trigonométrica</CardDescription>
               </CardHeader>
               <CardContent>
-                <CustomFunctionForm onSave={saveFunction} />
+                <CustomFunctionForm onSave={fetchFunctions} /> {/* 🔹 Pasar fetchFunctions para actualizar la lista */}
               </CardContent>
             </Card>
 
@@ -294,17 +277,12 @@ export default function DashboardPage() {
                 <CardDescription>Tus funciones trigonométricas personalizadas</CardDescription>
               </CardHeader>
               <CardContent>
-                <SavedFunctionsList
-                  functions={userFunctions}
-                  onDelete={deleteFunction}
-                  onUse={handleUseCustomFunction}
-                />
+                <SavedFunctionsList functions={functions} onUse={handleUseCustomFunction} refreshFunctions={fetchFunctions} />
               </CardContent>
             </Card>
           </div>
         )}
       </div>
     </div>
-  )
+  );
 }
-

@@ -14,6 +14,9 @@ import { generateSeriesData } from "@/lib/series-utils"
 import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import type { CustomFunction } from "@/lib/custom-functions"
+import { useToast } from "@/hooks/use-toast";
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
 const formSchema = z.object({
   seriesType: z.enum(["sine", "cosine", "tangent", "custom"], {
@@ -48,10 +51,12 @@ export function SeriesForm({
   onGenerate,
   customExpression,
   onCustomExpressionClear,
-  customFunctions,
 }: SeriesFormProps) {
-  const [isGenerating, setIsGenerating] = useState(false)
-  const [selectedFunction, setSelectedFunction] = useState<CustomFunction | null>(null)
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [customFunctions, setCustomFunctions] = useState<CustomFunction[]>([]);
+  const [selectedFunction, setSelectedFunction] = useState<CustomFunction | null>(null);
+  const [loadingFunctions, setLoadingFunctions] = useState(true);
+  const { toast } = useToast();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -65,18 +70,48 @@ export function SeriesForm({
   })
 
   // Set form to custom type when a custom expression is provided
+  // 🔹 Obtener las funciones personalizadas del usuario
   useEffect(() => {
-    if (customExpression) {
-      form.setValue("seriesType", "custom")
-    }
-  }, [customExpression, form])
+    const fetchCustomFunctions = async () => {
+      try {
+        const user = JSON.parse(localStorage.getItem("user") || "{}");
+        const token = user?.token;
+        if (!token) throw new Error("Usuario no autenticado");
 
-  // Handle custom function selection
+        const res = await fetch(`${API_URL}/functions/saved`, {
+          method: "GET",
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        if (!res.ok) {
+          const errorData = await res.json();
+          throw new Error(errorData.detail || "Error al obtener las funciones guardadas");
+        }
+
+        const data = await res.json();
+        setCustomFunctions(data);
+      } catch (error) {
+        console.error("❌ Error al obtener funciones personalizadas:", error);
+        toast({
+          variant: "destructive",
+          title: "Error al cargar funciones",
+          description: "No se pudieron cargar las funciones personalizadas.",
+        });
+      } finally {
+        setLoadingFunctions(false);
+      }
+    };
+
+    fetchCustomFunctions();
+  }, [toast]);
+
+  
+  // 🔹 Manejar selección de función personalizada
   const handleCustomFunctionChange = (functionId: string) => {
-    const selectedFunc = customFunctions.find((f) => f.id === functionId)
-    setSelectedFunction(selectedFunc || null)
-    form.setValue("customFunctionId", functionId)
-  }
+    const selectedFunc = customFunctions.find((f) => f.id === functionId);
+    setSelectedFunction(selectedFunc || null);
+    form.setValue("customFunctionId", functionId);
+  };
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsGenerating(true);
