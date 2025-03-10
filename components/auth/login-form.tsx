@@ -12,6 +12,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "@/components/ui/input"
 import { useToast } from "@/hooks/use-toast"
 import { login } from "@/lib/auth-actions"
+import { useAuth } from "@/lib/auth-provider"
 
 const formSchema = z.object({
   email: z.string().email({
@@ -26,6 +27,7 @@ export function LoginForm() {
   const [isLoading, setIsLoading] = useState(false)
   const router = useRouter()
   const { toast } = useToast()
+  const { setUser } = useAuth()
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -39,12 +41,19 @@ export function LoginForm() {
     setIsLoading(true)
     try {
       const result = await login(values)
-      if (result.success) {
+      if (result.success && result.user) {
+        // Actualizar el contexto de autenticación antes de redirigir
+        setUser(result.user)
+
         toast({
           title: "Inicio de sesión exitoso",
           description: "Redirigiendo al dashboard...",
         })
-        router.push("/dashboard")
+
+        // Pequeño retraso para asegurar que el estado se actualice
+        setTimeout(() => {
+          router.push("/dashboard")
+        }, 1000)
       } else {
         toast({
           variant: "destructive",
