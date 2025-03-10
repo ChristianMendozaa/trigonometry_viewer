@@ -140,6 +140,25 @@ export default function DashboardPage() {
         <p className="text-muted-foreground">Genera y visualiza series trigonométricas personalizadas</p>
       </div>
 
+            {/* Navegación móvil (bottom navigation) */}
+            <div className="fixed bottom-0 left-0 right-0 z-50 bg-background border-t md:hidden">
+        <div className="grid grid-cols-4 h-16">
+          {tabs.map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={cn(
+                "flex flex-col items-center justify-center space-y-1 transition-colors",
+                activeTab === tab.id ? "text-primary" : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              {tab.icon}
+              <span className="text-xs">{tab.label}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
       <div className="hidden md:block">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="grid grid-cols-4 w-full">
