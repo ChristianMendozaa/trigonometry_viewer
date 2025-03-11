@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input"
 import { useToast } from "@/hooks/use-toast"
 import { login } from "@/lib/auth-actions"
 import { useAuth } from "@/lib/auth-provider"
+import { Eye, EyeOff } from "lucide-react"
 
 const formSchema = z.object({
   email: z.string().email({
@@ -28,6 +29,7 @@ export function LoginForm() {
   const router = useRouter()
   const { toast } = useToast()
   const { setUser } = useAuth()
+  const [showPassword, setShowPassword] = useState(false)
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -100,7 +102,16 @@ export function LoginForm() {
               <FormItem>
                 <FormLabel>Contraseña</FormLabel>
                 <FormControl>
-                  <Input type="password" {...field} />
+                  <div className="relative">
+                    <Input type={showPassword ? "text" : "password"} {...field} />
+                    <button
+                      type="button"
+                      className="absolute inset-y-0 right-3 flex items-center text-gray-500 hover:text-gray-700"
+                      onClick={() => setShowPassword((prev) => !prev)}
+                    >
+                      {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                    </button>
+                  </div>
                 </FormControl>
                 <FormMessage />
               </FormItem>
