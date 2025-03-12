@@ -55,7 +55,7 @@ export function LoginForm() {
         // Pequeño retraso para asegurar que el estado se actualice
         setTimeout(() => {
           router.push("/dashboard")
-        }, 1000)
+        }, 100)
       } else {
         toast({
           variant: "destructive",

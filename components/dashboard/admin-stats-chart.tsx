@@ -9,31 +9,54 @@ import {
   Title,
   Tooltip,
   Legend,
-  type ChartData,
+  ChartData,
 } from "chart.js"
 
-// Register ChartJS components
+// Registra los componentes de ChartJS
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend)
 
-export function AdminStatsChart() {
+type SeriesStats = {
+  [key: string]: {
+    count: number
+    avg_error: number
+    max_error: number
+    // std_dev?: number // si tuvieras ese campo
+  }
+}
+
+interface AdminStatsChartProps {
+  seriesStats: SeriesStats
+}
+
+export function AdminStatsChart({ seriesStats }: AdminStatsChartProps) {
+  // Convertimos 'seriesStats' en arreglos para ChartJS
+  const labels = Object.keys(seriesStats) // ["Seno", "Coseno", "Tangente", "Personalizada", ...]
+
+  // data1 = avg_error, data2 = ? (desviación), data3 = max_error
+  const avgErrors = labels.map((label) => seriesStats[label].avg_error)
+  const maxErrors = labels.map((label) => seriesStats[label].max_error)
+  // Si tuvieras std_dev, lo mapearías también
+  // const stdDevs = labels.map((label) => seriesStats[label].std_dev ?? 0)
+
   const chartData: ChartData<"bar"> = {
-    labels: ["Seno", "Coseno", "Tangente", "Personalizada"],
+    labels,
     datasets: [
       {
         label: "Error Promedio",
-        data: [0.0022, 0.0025, 0.0038, 0.0031],
+        data: avgErrors,
         backgroundColor: "rgba(99, 102, 241, 0.7)",
       },
       {
-        label: "Desviación Estándar",
-        data: [0.0008, 0.0011, 0.0015, 0.0013],
-        backgroundColor: "rgba(34, 197, 94, 0.7)",
-      },
-      {
         label: "Error Máximo",
-        data: [0.0076, 0.0082, 0.0124, 0.0098],
+        data: maxErrors,
         backgroundColor: "rgba(239, 68, 68, 0.7)",
       },
+      // Si tuvieras std_dev
+      // {
+      //   label: "Desviación Estándar",
+      //   data: stdDevs,
+      //   backgroundColor: "rgba(34, 197, 94, 0.7)",
+      // },
     ],
   }
 
@@ -62,4 +85,3 @@ export function AdminStatsChart() {
 
   return <Bar data={chartData} options={options} />
 }
-

@@ -10,11 +10,17 @@ import { AdminUsersTable } from "@/components/dashboard/admin-users-table"
 import { AdminStatsChart } from "@/components/dashboard/admin-stats-chart"
 import { useAuth } from "@/lib/auth-provider"
 
+// 🔥 Importamos nuestro hook personalizado
+import { useDashboardStats } from "@/hooks/useDashboardStats"
+
 export default function AdminDashboardPage() {
   const { user } = useAuth()
   const router = useRouter()
 
-  // Redirect if not admin
+  // 🚀 Hook para datos de dashboard en tiempo real
+  const { dashboard, loading } = useDashboardStats()
+
+  // Redirect si no es admin
   useEffect(() => {
     if (user && user.role !== "admin") {
       router.push("/dashboard")
@@ -25,6 +31,29 @@ export default function AdminDashboardPage() {
     return null
   }
 
+  // Muestra un loader mientras no tengas los datos
+  if (loading) {
+    return <p>Cargando datos del dashboard...</p>
+  }
+
+  // Si no existe el documento "stats" en Firestore
+  if (!dashboard) {
+    return <p>No hay datos de Dashboard</p>
+  }
+
+  // Extraemos los campos que necesitamos
+  const {
+    total_users = 0,
+    total_users_growth = 0,
+    total_series_generated = 0,
+    global_avg_error = 0.0,
+    error_change = 0.0,
+    series_growth = 0,
+    high_error_series = [],
+    top_performing_users = [],
+    // ...
+  } = dashboard
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-2">
@@ -32,35 +61,47 @@ export default function AdminDashboardPage() {
         <p className="text-muted-foreground">Visualiza y analiza los datos de todos los usuarios</p>
       </div>
 
+      {/* Tarjetas principales */}
       <div className="grid gap-6 md:grid-cols-3">
+        {/* Total Usuarios */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Usuarios</CardTitle>
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">12</div>
-            <p className="text-xs text-muted-foreground">+2 desde el último mes</p>
+            <div className="text-2xl font-bold">{total_users}</div>
+            <p className="text-xs text-muted-foreground">
+              {total_users_growth >= 0 ? `+${total_users_growth}` : total_users_growth} desde el día anterior
+            </p>
           </CardContent>
         </Card>
+
+        {/* Series Generadas */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Series Generadas</CardTitle>
             <LineChart className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">145</div>
-            <p className="text-xs text-muted-foreground">+28 desde la semana pasada</p>
+            <div className="text-2xl font-bold">{total_series_generated}</div>
+            <p className="text-xs text-muted-foreground">
+              {series_growth >= 0 ? `+${series_growth}` : series_growth} desde el día anterior
+            </p>
           </CardContent>
         </Card>
+
+        {/* Error Promedio Global */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Error Promedio Global</CardTitle>
             <BarChart className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">0.0027</div>
-            <p className="text-xs text-muted-foreground">-0.0005 desde el mes pasado</p>
+            <div className="text-2xl font-bold">{global_avg_error.toFixed(4)}</div>
+            <p className="text-xs text-muted-foreground">
+              {error_change >= 0 ? `+${error_change.toFixed(4)}` : error_change.toFixed(4)} desde el día anterior
+            </p>
           </CardContent>
         </Card>
       </div>
@@ -77,6 +118,7 @@ export default function AdminDashboardPage() {
           </TabsTrigger>
         </TabsList>
 
+        {/* Tabla de Usuarios */}
         <TabsContent value="users" className="space-y-6">
           <Card>
             <CardHeader>
@@ -84,11 +126,13 @@ export default function AdminDashboardPage() {
               <CardDescription>Lista de todos los usuarios y sus datos generados</CardDescription>
             </CardHeader>
             <CardContent>
-              <AdminUsersTable />
+              {/* Pasamos los usuarios reales al componente */}
+              <AdminUsersTable users={dashboard.users || []} />
             </CardContent>
           </Card>
         </TabsContent>
 
+        {/* Estadísticas */}
         <TabsContent value="stats" className="space-y-6">
           <Card>
             <CardHeader>
@@ -96,11 +140,12 @@ export default function AdminDashboardPage() {
               <CardDescription>Análisis de errores por tipo de serie trigonométrica</CardDescription>
             </CardHeader>
             <CardContent className="h-[400px]">
-              <AdminStatsChart />
+              <AdminStatsChart seriesStats={dashboard.series_stats || {}} />
             </CardContent>
           </Card>
 
           <div className="grid gap-6 md:grid-cols-2">
+            {/* Usuarios con Mejor Desempeño */}
             <Card>
               <CardHeader>
                 <CardTitle>Usuarios con Mejor Desempeño</CardTitle>
@@ -108,28 +153,25 @@ export default function AdminDashboardPage() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {[
-                    { name: "Ana Martínez", email: "ana@ejemplo.com", avgError: 0.0012 },
-                    { name: "Carlos López", email: "carlos@ejemplo.com", avgError: 0.0018 },
-                    { name: "Elena Gómez", email: "elena@ejemplo.com", avgError: 0.0023 },
-                  ].map((user, index) => (
+                  {top_performing_users.map((u, index) => (
                     <div key={index} className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground">
                           {index + 1}
                         </div>
                         <div>
-                          <p className="font-medium">{user.name}</p>
-                          <p className="text-xs text-muted-foreground">{user.email}</p>
+                          <p className="font-medium">{u.name}</p>
+                          <p className="text-xs text-muted-foreground">{u.email}</p>
                         </div>
                       </div>
-                      <div className="font-medium">{user.avgError.toFixed(4)}</div>
+                      <div className="font-medium">{u.avg_error.toFixed(4)}</div>
                     </div>
                   ))}
                 </div>
               </CardContent>
             </Card>
 
+            {/* Series con Mayor Tasa de Error */}
             <Card>
               <CardHeader>
                 <CardTitle>Series con Mayor Tasa de Error</CardTitle>
@@ -137,17 +179,13 @@ export default function AdminDashboardPage() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {[
-                    { type: "Tangente", count: 42, avgError: 0.0038 },
-                    { type: "Personalizada", count: 28, avgError: 0.0031 },
-                    { type: "Seno", count: 56, avgError: 0.0022 },
-                  ].map((series, index) => (
+                  {high_error_series.map((s, index) => (
                     <div key={index} className="flex items-center justify-between">
                       <div>
-                        <p className="font-medium">{series.type}</p>
-                        <p className="text-xs text-muted-foreground">{series.count} series generadas</p>
+                        <p className="font-medium">{s.type}</p>
+                        <p className="text-xs text-muted-foreground">{s.count} series generadas</p>
                       </div>
-                      <div className="font-medium">{series.avgError.toFixed(4)}</div>
+                      <div className="font-medium">{s.avg_error.toFixed(4)}</div>
                     </div>
                   ))}
                 </div>
@@ -159,4 +197,3 @@ export default function AdminDashboardPage() {
     </div>
   )
 }
-
