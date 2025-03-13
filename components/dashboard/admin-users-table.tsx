@@ -83,24 +83,6 @@ export function AdminUsersTable({ users }: AdminUsersTableProps) {
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline">
-              Filtrar
-              <ChevronDown className="ml-2 h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem>Todos los usuarios</DropdownMenuItem>
-            <DropdownMenuItem>Usuarios normales</DropdownMenuItem>
-            <DropdownMenuItem>Administradores</DropdownMenuItem>
-            <DropdownMenuItem>Activos recientemente</DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-        <Button variant="outline">
-          <Download className="mr-2 h-4 w-4" />
-          Exportar
-        </Button>
       </div>
 
       <div className="rounded-md border">

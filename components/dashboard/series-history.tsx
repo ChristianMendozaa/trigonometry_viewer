@@ -118,10 +118,6 @@ export function SeriesHistory() {
                         <Eye className="h-4 w-4" />
                         <span className="sr-only">Ver</span>
                       </Button>
-                      <Button variant="ghost" size="icon">
-                        <Download className="h-4 w-4" />
-                        <span className="sr-only">Descargar</span>
-                      </Button>
                     </div>
                   </TableCell>
                 </TableRow>
