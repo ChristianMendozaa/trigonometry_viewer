@@ -1,6 +1,8 @@
 # React + TypeScript Frontend
 
-Este proyecto es una aplicación frontend construida con **React** y **TypeScript**. Sigue las instrucciones a continuación para configurarlo y ejecutarlo localmente.
+Este proyecto es una aplicación frontend construida con **React** y **TypeScript**. Actualmente, el proyecto está **en producción** y conectado a un servidor en producción.
+
+Sigue las instrucciones a continuación para configurarlo y ejecutarlo localmente.
 
 ## 🛠️ Prerrequisitos
 Asegúrate de tener instalado lo siguiente en tu máquina:
